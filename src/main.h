@@ -74,7 +74,8 @@ OLED        Screen;
 
 
 // Global Flags
-
+bool extTherm   = false;
+bool intTherm   = false;
 bool msStatus   = false;
 bool bnoStatus  = false;
 bool sdStatus   = false;
