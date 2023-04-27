@@ -175,44 +175,40 @@ void loop() {
 
 // Function Definitions
 
-void wait(unsigned const int t){
-  while(millis() - timer <= t) {}
-  timer = millis();
-}
+void wait(unsigned const int t){                                                                    //millis() returns the number of milliseconds the processor has been powered on
+  timer = millis();                                                                                 // record the current time when this function is called
+  while(millis() - timer <= t) {}                                                                   // wait until the millis counter has increased to at leat t ms greater than timer
+}                                                                                                   // the way they had this before woudln't work. Can you figure out why? 
+                                                                                                    // Hint: the while loop originally came first, then the timer variable assignment.
 
-bool updateButtonStatus(){ 
-  bool buttonStatus = false;
-  buttonStatus = (digitalRead(BUTTON_PIN) == 0) ? true : false;
-  return buttonStatus;
+bool updateButtonStatus(){
+  return digitalRead(BUTTON_PIN) == LOW;                                                            // The button is configured with a pull-up resistor. Pressing the button connects the pin on the Teensy to ground. What should the pin read when the button is pressed?
 }
 
 bool updateSwitchStatus(){
-  bool switchStatus = false;
-  switchStatus = (digitalRead(SWITCH_PIN) == 0) ? true : false;
-  return switchStatus;
+  return digitalRead(SWITCH_PIN) == LOW;                                                            // The switch is configured the same as the button.
 }
 
 bool sdSetup(char *dataFile, byte const &N1, byte const &N2){
   pinMode(CHIP_SELECT,OUTPUT);
-  if(!SD.begin(CHIP_SELECT)) sdStatus = false;
-  else {
-      sdStatus = true;
-      for (byte i = 0; i < 100; i++) {
-          dataFile[N1] = '0' + i/10; 
-          dataFile[N2] = '0' + i%10;
-          if (!SD.exists(dataFile)) {
-             datalog = SD.open(dataFile, FILE_WRITE);
-              sdActive = true;
-              break;
-          }
-          else sdActive = false;
+  sdStatus = SD.begin(CHIP_SELECT);
+  if (!sdStatus)
+      return false;
+  for (byte i = 0; i < 100; i++) {
+      dataFile[N1] = '0' + i/10; 
+      dataFile[N2] = '0' + i%10;
+      if (!SD.exists(dataFile)) {
+          datalog = SD.open(dataFile, FILE_WRITE);                                                  // uhh datalog is opened but never closed and then used again later in logData
+          sdActive = true;
+          break;
       }
-  } 
+      else sdActive = false;
+  }
   return sdStatus;
 }
 
 void logData(String const &Data, char const *dataFile){
-  datalog = SD.open(dataFile, FILE_WRITE);
+  datalog = SD.open(dataFile, FILE_WRITE);                                                          // WARN: potentially opening the same file twice if called after sdSetup.
   datalog.println(Data);
   datalog.close();
 }
@@ -221,14 +217,14 @@ bool gpsSetup(){
   LED2.on();
   Screen.update("\nGPS\n\nSetup");
   gpsSS.begin(GPS_BAUD);
-  //gps.init();
   
-  for (byte i=0; i<=50; i++){ // Attempt to set GPS to Airborn mode 50 times
+  for (byte i=0; i<=50; i++)
+  { // Attempt to set GPS to Airborn mode 50 times -sam WHY???
       if (GPS.setAirborne()) {
           gpsStatus = true;
           break;
       }
-      if (i==50) gpsStatus = false;
+      if (i==50) gpsStatus = false; //-sam THIS IS A MESS WHAT
   }
   LED2.off();
   return gpsStatus;
@@ -336,7 +332,7 @@ void updateData(){
   LED2.off(); 
 }
 
-bool xBeeSetup() {
+bool xBeeSetup() {    // talk about a real mess
   xBeeSS.begin(XBEE_BAUD);
   
   wait(300);
@@ -496,32 +492,28 @@ bool xBeeSetup() {
 
 void listenXBee(){
   String recievedID = "";
-  byte split;  //question mark separates id from command
+  byte split;                                                                                       //index of question mark separates id from command
 
   //digitalWrite(27, LOW);  // turn the RST on LOW for to allow data to be sent to the Teensy
-  //Just pipe data from computer to XBee
-  while (Serial.available() > 0) {
+  while (Serial.available() > 0) {                                                                  // Send any Serial Input through to XBee.
       String serial = Serial.readStringUntil('\n');
-      Serial.print(serial);
+      Serial.print("Sending: " + serial);
       xBeeSS.print(xbeeID + IDterminator + serial + stringTerminator + String(inboxTerminator));
   }
 
   while (xBeeSS.available() > 0) {
     LED3.on();
-    //Serial.println(xBeeSS.available());
     xbeeSerialData = buildString();
     //digitalWrite(27, HIGH);  // turn the RST on HIGH for flow control
 
-    if (xbeeSerialData == "") return;        //No data was received 
-    Serial.println(xbeeSerialData);  // for troubleshooting xbee messages
+    if (xbeeSerialData == "") return;                                                               // No data was received 
+    Serial.println(xbeeSerialData);                                                                 // Spit out recieved message over Serial 
 
-    if (xbeeSerialData.indexOf(IDterminator) != -1){ // If no IDterminator is found indexOf will return -1, so if it doesn't equal -1 continue
-        split = xbeeSerialData.indexOf(IDterminator);  //question mark separates id from command
+    if (xbeeSerialData.indexOf(IDterminator) != -1){                                                // If no IDterminator is found indexOf will return -1, so if it doesn't equal -1 continue
+        split = xbeeSerialData.indexOf(IDterminator);                                               // IDTerminator = ? separates id from command
         recievedID = (xbeeSerialData.substring(0, split));
-        //Serial.println(recievingID); // troubleshooting
-        if (recievedID != xbeeID && !isRelay) break;
-        xbeeSerialData = (xbeeSerialData.substring(split + 1, xbeeSerialData.length()-1));
-        //Serial.println("Command ->" + xbeeSerialData); // troubleshooting
+        if (recievedID != xbeeID && !isRelay) break;                                                // If we are recieving and the message is not for us break
+        xbeeSerialData = (xbeeSerialData.substring(split + 1, xbeeSerialData.length()-1));          // break up message, the remaining part is the serial data
     }
 
     //LED3.off();

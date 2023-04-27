@@ -162,13 +162,19 @@ void wait(unsigned const int);
 
 /**
  * Reads BUTTON_PIN to determine switch state.
- * @returns true if switch is on, false if switch is off.
+ * Assumes the button is configured with a pullup resistor. This means that the voltage at the
+ * Teensy pin is "pulled-up" to HIGH normally, and when the button makes contact it shorts this pin
+ * to ground. Here's some EE210 for you: what's the voltage at a grounded pin? HIGH or LOW?
+ * @returns true if button is pressed, false otherwise.
 */
 bool updateButtonStatus();
 
 /**
  * Reads SWITCH_PIN to determine the tactile switch state.
- * @returns true if button is pressed, fasle otherwise.
+ * Works the same way as the button function, just reading a different pin. digitalRead reads a
+ * voltage at a certain pin. System is at 5v. What would HIGH voltage be here? 
+ * What would LOW voltage be here?
+ * @returns true if switch is on, fasle otherwise.
 */
 bool updateSwitchStatus();
 
@@ -288,8 +294,14 @@ void listenXBee();
 void updateXBee(String data);
 
 /**
- * Reads an incoming string off the XBee, and determines if it is a command.
- * @returns Returns the command that was read
- * @note i don't really know what is going on here tbh
+ * Reads an incoming string of data from the XBee Radio
+ * First, it reads the incoming stream of data until it sees the inboxTerminator ("&")
+ * Then, it checks if the string is empty or is "+++", in which case it just exits.
+ * If no ID Terminator can be found, return the entire string which should be just a command.
+ * If the last character of the string is "!" (stringTerminator), then just return the string
+ * Otherwise, keep reading the serial until we read the string terminator followed by the inbox terminator
+ * 
+ * @returns Returns the command that was read. Appears as if a properly formatted command will
+ * end with a stringTerminator.
 */
 String buildString();
