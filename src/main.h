@@ -34,10 +34,10 @@
 #define SWITCH_PIN      30                  // This is the pin the selection switch is wired to. Label on PCB
 #define BUTTON_PIN      31                  // This is the pin the button is wired to. Label on PCB
 
-#define GPS_BAUD        39400
+#define GPS_BAUD        39400               // Baud Rate for the GPS. This should stay at 39400 for the M9N
 
-#define DELAY_DATA      999
-#define DELAY_SETUP     499
+#define DELAY_DATA      999                // Delay between data
+#define DELAY_SETUP     800                 // Delay between each device's initialization
 #define DELAY_XBEE      999
 
 char    dataLogName[] = "PTER00.csv";
@@ -75,11 +75,12 @@ OLED        Screen;
 
 // Global Flags
 
+bool msStatus   = false;
 bool bnoStatus  = false;
 bool sdStatus   = false;
 bool sdActive   = false;
 bool switchPosition = false;
-byte gpsStatus  = 0;
+bool gpsStatus  = 0;
 
 // Xbee Settings
 

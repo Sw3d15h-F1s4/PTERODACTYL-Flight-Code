@@ -14,7 +14,7 @@
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(SERIAL_BAUD);
+  Serial.begin(SERIAL_BAUD);                                                                // begin serial communication
   Serial.println("Serial Online.");
 
   LED1.begin();
@@ -23,99 +23,96 @@ void setup() {
   LED4.begin();
   LED5.begin();
 
-  LED1.on();
+  LED1.on();                                                                                // indicate loading
 
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  pinMode(SWITCH_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);                                                        // set BUTTON_PIN for digitalRead, pullup means true when button not pressed
+  pinMode(SWITCH_PIN, INPUT_PULLUP);                                                        // set SWITCH_PIN to the same
 
-  Screen.begin();
+  Screen.begin();                                                                           // initialize oled screen
   Screen.update("Init.");
 
-  wait(DELAY_SETUP);
-  delay(300);
+  wait(DELAY_SETUP);                                                                        // give peripherals a chance to turn on
 
-  sdSetup(dataLogName, DATA_FILE_N1, DATA_FILE_N2);
+  sdSetup(dataLogName, DATA_FILE_N1, DATA_FILE_N2);                                         // check SD Card
 
-  if (sdStatus && sdActive){
-    Serial.println("SD Card Online. Creating Log File: " + String(dataLogName));
+  if (sdStatus && sdActive){                                                                // if the SD card is present and a file could be created
+    Serial.println("SD Card Online. Creating Log File: " + String(dataLogName));            // notify logging success
     Screen.update("Logging:\n\n" + String(dataLogName));
-  } else {
-    Serial.println("SD Setup Failed. Either clear SD card, or ensure insertion.");
+  } else {                                                                                  // otherwise
+    Serial.println("SD Setup Failed. Either clear SD card, or ensure insertion.");          // notify logging fail
     Screen.update("SD\nFailed\n\n\n\nSkip:B");
   }
 
-  if (!sdStatus || !sdActive) LED3.on();
+  if (!sdStatus || !sdActive) LED3.on();                                                    // require button to confirm no sd card
   if (!sdStatus || !sdActive) while(!updateButtonStatus()) delay(20);
 
   wait(DELAY_SETUP);
-  delay(500);
 
   while (ThermistorInt.getStatus() == 0 || ThermistorExt.getStatus() == 0){
-    if(millis()-timer > 250){                                         // Check thermistors every 250 milliseconds after the button is pressed
+    if(millis()-timer > 250){                                                               // Check thermistors every 250 milliseconds after the button is pressed
       _print = (ThermistorInt.begin(12) && ThermistorExt.begin(12)) ? "Therm Int Online!\nTherm Ext Online!" : ThermistorInt.getStatus() ? "Therm Int Online!\nTherm Ext Offline...Skip: B\nRetry: S" : ThermistorExt.getStatus() ? "Therm Int Offline...\nTherm Ext Online!\nSkip: B\nRetry: S" : "Therm Int Offline...Therm Ext Offline...Skip: B\nRetry: S";
-      Serial.println(_print);                                       // Since this is a Teensy we are using, the read bit resolution can be at a max of 13 (12 for Teensy 4.1).
-      Screen.update(_print);                                         // The maximum adc value given to the thermistor, should be 8191 (2^13) for a Teensy 3.6, 
-      timer = millis();                                             // 4095 (2^12) for a Teensy 4.1, and 1023 (2^10) for an Arduino
+      Serial.println(_print);                                                               // Since this is a Teensy we are using, the read bit resolution can be at a max of 13 (12 for Teensy 4.1).
+      Screen.update(_print);                                                                // The maximum adc value given to the thermistor, should be 8191 (2^13) for a Teensy 3.6, 
+      timer = millis();                                                                     // 4095 (2^12) for a Teensy 4.1, and 1023 (2^10) for an Arduino
     }
     if(ThermistorInt.getStatus() == 0 || ThermistorExt.getStatus() == 0) while(updateButtonStatus() == 0 && updateSwitchStatus() == 0) delay(20);
     if (updateButtonStatus()) break; 
   }
 
   wait(DELAY_SETUP);
-  delay(300);
 
-  // We are using the MS5611
-
-  Screen.update("Initializing\nMS5611");
+  Screen.update("Initializing\nMS5611");                                                    // We are using the MS5611
   Serial.println("Initializing MS5611 Pressure Sensor");
-  delay(250);
-  _print = (PressureSensor.begin()) ? "MS5611    Online." : "MS5611    Offline.";
-  Serial.println(_print);
-  Screen.update(_print);
+
+  wait(DELAY_SETUP);
+
+  while (!msStatus) {                                                                       // Try to initialize the pressure sensor
+    msStatus = PressureSensor.begin();
+    _print = (msStatus) ? "MS5611    Online." : "MS5611    Offline.\nSkip: B\nRetry: S";    // If fails, prompt user to retry or skip.
+    Serial.println(_print);
+    Screen.update(_print);
+    if (msStatus) break;                                                                    // if the pressure sensor worked then break out of the loop
+    while(updateButtonStatus() == 0 && updateSwitchStatus() == 0) delay(20);                // Wait for switch or button to be updated
+    if (updateButtonStatus()) break;                                                        // if the button was updated, then break
+    wait(100);
+  }
 
   PressureSensor.update();
   altFtStart = PressureSensor._altitudeFt;
 
   wait(DELAY_SETUP);
-  delay(300);
 
-  // We are using the BNO055
-  bnoStatus = false;
-  while(!bnoStatus){
-    bnoStatus = (OrientationSensor.begin()) ? true : false;
-    _print = (bnoStatus) ? "BNO055    Online!" : "BNO055    Offline...\nSkip: B\nRetry: S";
+  while(!bnoStatus){                                                                        // We are using the BNO055
+    bnoStatus = OrientationSensor.begin();                                                  // check if the sensor is turned on 
+    _print = (bnoStatus) ? "BNO055    Online!" : "BNO055    Offline.\nSkip: B\nRetry: S";   // if it fails prompt to retry or skip
     Serial.println(_print);
     Screen.update(_print);
-    if (bnoStatus) break;
-    while(updateButtonStatus() == 0 && updateSwitchStatus() == 0) delay(20);
-    if (updateButtonStatus()) break;
-    delay(100);
+    if (bnoStatus) break;                                                                   // if it worked, no need to retry
+    while(updateButtonStatus() == 0 && updateSwitchStatus() == 0) delay(20);                // otherwise check for switch to be moved or button to be pressed
+    if (updateButtonStatus()) break;                                                        // if it was the button skip
+    wait(100);
   }
 
   wait(DELAY_SETUP);
-  delay(300);
 
-  // We are using M9N GPS NOT in high-precision mode
-  //
-  while(gpsStatus != 1){
-    _print = (gpsSetup() == 1) ? "M9N GPS    Online!" : "M9N GPS    Offline...\nSkip: B\nRetry: S";
+  while(!gpsStatus){                                                                       // We are using M9N GPS NOT in high-precision mode
+    gpsStatus = gpsSetup();                                                                // try to initialize GPS
+    _print = gpsStatus ? "M9N GPS    Online!" : "M9N GPS    Offline...\nSkip: B\nRetry: S";// if it fails prompt user to retry or skip
     Serial.println(_print);
     Screen.update(_print);
-    if(gpsStatus != 1) while(updateButtonStatus() == 0 && updateSwitchStatus() == 0) delay(20);
-    if (updateButtonStatus()) break; 
-    delay(20);
+    if(gpsStatus) while(updateButtonStatus() == 0 && updateSwitchStatus() == 0) delay(20); // wait for button or switch to be updated
+    if (updateButtonStatus()) break;                                                       // if it was the button then skip 
+    wait(20);
   }
+
   wait(DELAY_SETUP);
-  delay(400);
 
-
-  Screen.update("\n\n   XBee\n   Setup");
+  Screen.update("\n\n   XBee\n   Setup");                                                  // Begin XBee Setup
   _print = (xBeeSetup()) ? "XBee      Relay..." : "XBee      Reciever..";
   Serial.println(_print);
   Screen.update(_print);
 
   wait(DELAY_SETUP);
-  delay(300);
 
   logData(LOG_HEADER, dataLogName);
 
@@ -197,9 +194,9 @@ bool updateSwitchStatus(){
 
 bool sdSetup(char *dataFile, byte const &N1, byte const &N2){
   pinMode(CHIP_SELECT,OUTPUT);
-  if(!SD.begin(CHIP_SELECT)) sdStatus = 0;
+  if(!SD.begin(CHIP_SELECT)) sdStatus = false;
   else {
-      sdStatus = 1;
+      sdStatus = true;
       for (byte i = 0; i < 100; i++) {
           dataFile[N1] = '0' + i/10; 
           dataFile[N2] = '0' + i%10;
@@ -228,10 +225,10 @@ bool gpsSetup(){
   
   for (byte i=0; i<=50; i++){ // Attempt to set GPS to Airborn mode 50 times
       if (GPS.setAirborne()) {
-          gpsStatus = 1;
+          gpsStatus = true;
           break;
       }
-      if (i==50) gpsStatus = 0;
+      if (i==50) gpsStatus = false;
   }
   LED2.off();
   return gpsStatus;
@@ -241,7 +238,7 @@ void updateGPS(){
   gpsMonth  = GPS.getMonth();
   gpsDay    = GPS.getDay();
   gpsYear   = GPS.getYear();
-  gpsHour   = GPS.getHour() - 5;  // Their time zone is 5h ahead
+  gpsHour   = GPS.getHour() - 5;  // Their time zone is 5h ahead TODO: aren't we GMT-4?
   gpsMinute = GPS.getMinute();
   gpsSecond = GPS.getSecond();
   gpsLat    = GPS.getLat();
