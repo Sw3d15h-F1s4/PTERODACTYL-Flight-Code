@@ -1,0 +1,1 @@
+This is something we need to discuss. Do we just want to commit to master all the time? Or do we want to check out branches for each new feature (the right way)? Our code is small enough for this not to really matter though.
