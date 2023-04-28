@@ -14,7 +14,6 @@
 
 void setup()
 {
-  // put your setup code here, to run once:
   Serial.begin(SERIAL_BAUD); // begin serial communication
   Serial.println("Serial Online.");
 
@@ -181,9 +180,9 @@ void loop()
   else
     LED3.off();
 
-  listenXBee();
+  listenXBee(); // Read incoming data from the XBee Radio
 
-  if (updateButtonStatus() && millis() - btnTimer > 250)
+  if (updateButtonStatus() && millis() - btnTimer > 250) // Every 250 ms allow the button to execute the "flip" command.
   {
     updateXBee("FLIP");  // Im not sure what they thought this does. Not what they think for sure.
     btnTimer = millis(); // this will trigger every time you wait 250 ms between button presses, did they think this was for holding down the button?
@@ -232,16 +231,17 @@ bool updateSwitchStatus()
 bool sdSetup(char *dataFile, byte const &N1, byte const &N2)
 {
   pinMode(CHIP_SELECT, OUTPUT);
-  sdStatus = SD.begin(CHIP_SELECT);
+  sdStatus = SD.begin(CHIP_SELECT); // Initialize the SD card using the built in pin
   if (!sdStatus)
     return false;
   for (byte i = 0; i < 100; i++)
   {
     dataFile[N1] = '0' + i / 10;
     dataFile[N2] = '0' + i % 10;
-    if (!SD.exists(dataFile))
+    if (!SD.exists(dataFile)) // check for space left on the SD card. We can use file names "XXXX00" through "XXX99"
     {
       datalog = SD.open(dataFile, FILE_WRITE); // uhh datalog is opened but never closed and then used again later in logData
+      datalog.close();                         // TODO: check if this breaks things
       sdActive = true;
       break;
     }
@@ -266,7 +266,7 @@ bool gpsSetup()
 
   gpsStatus = false;
   for (byte i = 0; i <= 50; i++)
-  { // Attempt to set GPS to Airborn mode 50 times -sam WHY???
+  { // Attempt to set GPS to Airborne mode 50 times -WHY???
     if (GPS.setAirborne())
     {
       gpsStatus = true;
@@ -331,6 +331,8 @@ String flightTimeStr(unsigned long t)
 
 float calculateFrequency(unsigned long _time)
 {
+  if (_time <= prevTime) // potential DIV BY 0 and return NEGATIVE FREQUENCY
+    return;
   float frequency = 1.0 / ((_time - prevTime) / 1000.0);
   prevTime = _time;
   return frequency;
@@ -339,23 +341,23 @@ float calculateFrequency(unsigned long _time)
 void updateData()
 {
   LED2.on();
-  timerSeconds = (timer * 1.0) / 1000.0;
+  timerSeconds = timer / 1000.0;
   fullTimer = flightTimeStr(timerSeconds);
   frequencyHz = calculateFrequency(timer);
 
-  if (ThermistorInt.getStatus())
+  if (ThermistorInt.getStatus()) // Update the thermistor values if they are working
     ThermistorInt.update();
   if (ThermistorExt.getStatus())
     ThermistorExt.update();
-  if (bnoStatus)
+  if (bnoStatus) // Update the accelerometer if it is working
     updateBNO();
-  if (gpsStatus == 1)
+  if (gpsStatus) // Update the GPS values if it is working
     updateGPS();
 
-  if (PressureSensor.status())
+  if (msStatus) // Update the pressure sensor if it is working
   {
     PressureSensor.update();
-    if (PressureSensor._altitudeFt - altFtStart > 100 && !flightTimerStatus)
+    if (PressureSensor._altitudeFt - altFtStart > 100 && !flightTimerStatus) // If we have ascended 100 ft, start the flight timer
     {
       flightStartTime = timerSeconds;
       flightTimerStatus = true;
@@ -389,8 +391,8 @@ void updateData()
   LED2.off();
 }
 
-bool xBeeSetup()
-{ // talk about a real mess
+bool xBeeSetup() // if this works, we might not want to touch it. this is all wrong according to the XBee's library
+{                // talk about a real mess
   xBeeSS.begin(XBEE_BAUD);
 
   wait(300);
@@ -588,6 +590,9 @@ void listenXBee()
     xBeeSS.print(xbeeID + IDterminator + serial + stringTerminator + String(inboxTerminator));
   }
 
+  // apparently we shouldn't be using the xbee's SoftwareSerial instance to talk directly, rather XBee::send() and XBee::recieve()
+  // but i can't find these functions anwhere so i have no clue
+  // scratch that, looks like we should be using softwareserial? Needs testing to see if this code actually works.
   while (xBeeSS.available() > 0)
   {
     LED3.on();

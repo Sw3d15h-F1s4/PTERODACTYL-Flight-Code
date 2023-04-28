@@ -231,6 +231,7 @@ String flightTimeStr(unsigned long t);
 /**
  * Calculates the frequency of this function being called in a loop. Takes the current time as an
  * input, calculates the time step, then returns that as a frequency.
+ * Input should always be increasing, and should never be the same
  * @param _time Input in milliseconds
  * @returns Returns the modified frequency in Hz
  */
