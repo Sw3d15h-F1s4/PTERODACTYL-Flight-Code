@@ -332,7 +332,7 @@ String flightTimeStr(unsigned long t)
 float calculateFrequency(unsigned long _time)
 {
   if (_time <= prevTime) // potential DIV BY 0 and return NEGATIVE FREQUENCY
-    return;
+    return 0;
   float frequency = 1.0 / ((_time - prevTime) / 1000.0);
   prevTime = _time;
   return frequency;
