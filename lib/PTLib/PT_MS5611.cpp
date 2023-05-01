@@ -14,7 +14,6 @@
 Member Defenition
 ************************************************************************************************************************************************/
 
-
 bool MS5611::begin(ms5611_osr_t osr)
 {
   Wire.begin();
@@ -41,7 +40,6 @@ bool MS5611::begin(ms5611_osr_t osr)
   return _status;
 }
 
-
 void MS5611::setOversampling(ms5611_osr_t osr)
 {
   switch (osr)
@@ -66,12 +64,10 @@ void MS5611::setOversampling(ms5611_osr_t osr)
   uosr = osr;
 }
 
-
 ms5611_osr_t MS5611::getOversampling(void)
 {
   return (ms5611_osr_t)uosr;
 }
-
 
 void MS5611::reset(void)
 {
@@ -82,7 +78,6 @@ void MS5611::reset(void)
   Wire.endTransmission();
 }
 
-
 void MS5611::readPROM(void)
 {
   for (uint8_t offset = 0; offset < 6; offset++)
@@ -90,7 +85,6 @@ void MS5611::readPROM(void)
     fc[offset] = readRegister16(MS5611_CMD_READ_PROM + (offset * 2));
   }
 }
-
 
 uint32_t MS5611::readRawTemperature(void)
 {
@@ -104,7 +98,6 @@ uint32_t MS5611::readRawTemperature(void)
 
   return readRegister24(MS5611_CMD_ADC_READ);
 }
-
 
 uint32_t MS5611::readRawPressure(void)
 {
@@ -157,7 +150,6 @@ int32_t MS5611::readPressure(bool compensation)
   return P;
 }
 
-
 double MS5611::readTemperature(bool compensation)
 {
   uint32_t D2 = readRawTemperature();
@@ -179,7 +171,6 @@ double MS5611::readTemperature(bool compensation)
 
   return ((double)TEMP / 100);
 }
-
 
 uint16_t MS5611::readRegister16(uint8_t reg)
 {
@@ -235,14 +226,12 @@ uint32_t MS5611::readRegister24(uint8_t reg)
   return value;
 }
 
-
 float MS5611::tempC()
 {
   msTemperatureC = readTemperature();
 
   return msTemperatureC;
 }
-
 
 float MS5611::tempF()
 {
@@ -252,7 +241,6 @@ float MS5611::tempF()
   return msTemperatureF;
 }
 
-
 float MS5611::pressurePSI()
 {
   msPressurePSI = readPressure();
@@ -260,7 +248,6 @@ float MS5611::pressurePSI()
 
   return msPressurePSI;
 }
-
 
 float MS5611::pressureATM()
 {
@@ -270,7 +257,6 @@ float MS5611::pressureATM()
 
   return msPressureATM;
 }
-
 
 float MS5611::altitudeFt()
 {
@@ -296,7 +282,6 @@ float MS5611::altitudeFt()
   return _altitudeFt;
 }
 
-
 float MS5611::altitudeM()
 {
   _altitudeFt = altitudeFt();
@@ -306,12 +291,10 @@ float MS5611::altitudeM()
   return _altitudeM;
 }
 
-
 bool MS5611::status()
 { // this returns the
   return _status;
 }
-
 
 void MS5611::update()
 {

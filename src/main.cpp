@@ -393,6 +393,7 @@ void updateData()
 
 bool xBeeSetup() // if this works, we might not want to touch it. this is all wrong according to the XBee's library
 {                // talk about a real mess
+                 // ok scratch that it isn't exactly wrong the XBee's library is gibberish
   xBeeSS.begin(XBEE_BAUD);
 
   wait(300);
@@ -407,13 +408,12 @@ bool xBeeSetup() // if this works, we might not want to touch it. this is all wr
         counterID = 10;
       channelID = String(counterID);
     }
-    Screen.update("XBee\nChannel:\n" + String(channelID) + "\nMove S\nto add 1\nPress: B");
-    Serial.println("XBee Channel: " + String(channelID) + ". Move Switch to add 1. Press Button to continue.");
+    Screen.update("XBee\nChannel:\n" + channelID + "\nMove S\nto add 1\nPress: B");
+    Serial.println("XBee Channel: " + channelID + ". Move Switch to add 1. Press Button to continue.");
     switchPosition = updateSwitchStatus();
     while (switchPosition == updateSwitchStatus() && updateButtonStatus() == 0)
       wait(20); // wait for a change in switch status or a button press
   }
-  counterID = 0;
   wait(300);
 
   counterID = 100;
@@ -427,13 +427,12 @@ bool xBeeSetup() // if this works, we might not want to touch it. this is all wr
         counterID = 100;
       networkID = "A" + String(counterID);
     }
-    Screen.update("XBee\nNetwork:\n" + String(networkID) + "\nMove S\nto add 1\nPress: B");
-    Serial.println("XBee Network: " + String(networkID) + ". Move Switch to add 1. Press Button to continue.");
+    Screen.update("XBee\nNetwork:\n" + networkID + "\nMove S\nto add 1\nPress: B");
+    Serial.println("XBee Network: " + networkID + ". Move Switch to add 1. Press Button to continue.");
     switchPosition = updateSwitchStatus();
     while (switchPosition == updateSwitchStatus() && updateButtonStatus() == 0)
       wait(20); // wait for a change in switch status or a button press
   }
-  counterID = 0;
   wait(300);
 
   xbeeTimerSeconds = millis();
@@ -475,6 +474,7 @@ bool xBeeSetup() // if this works, we might not want to touch it. this is all wr
     xBee.exitATmode();
     switchPosition = updateSwitchStatus();
 
+    counterID = 0;
     while (updateButtonStatus() == 0)
     {
       if (updateSwitchStatus() != switchPosition)
@@ -485,7 +485,7 @@ bool xBeeSetup() // if this works, we might not want to touch it. this is all wr
       while (switchPosition == updateSwitchStatus() && updateButtonStatus() == 0)
         wait(20); // wait for a change in switch status or a button press
     }
-    // numberOfXbees = counterID;
+
     xbeeRate = counterID; // for each XBee on the network, wait an additional cycle before sending data. Ehh, might work.
     for (int i = 0; i < counterID; i++)
     {                                           // create a filename for all xbee recievers that will be in the network
@@ -502,7 +502,6 @@ bool xBeeSetup() // if this works, we might not want to touch it. this is all wr
       xBeeFilenames[i][2] = xBeeCommLog[XBEE_FILE_N2];
       xBeeCommLog[XBEE_FILE_N1] = '0';
       xBeeCommLog[XBEE_FILE_N2] = '0';
-      timer = millis();
       wait(DELAY_SETUP);
     }
 
@@ -550,9 +549,7 @@ bool xBeeSetup() // if this works, we might not want to touch it. this is all wr
     Screen.update(_print);
     xBeeFilenames[counterID - 1][1] = xBeeCommLog[XBEE_FILE_N1];
     xBeeFilenames[counterID - 1][2] = xBeeCommLog[XBEE_FILE_N2];
-    timer = millis();
     wait(DELAY_SETUP);
-    wait(100);
 
     _print = "Data String Recieved, Other";
     logData(_print, xBeeCommLog);
@@ -568,7 +565,6 @@ bool xBeeSetup() // if this works, we might not want to touch it. this is all wr
   _print = (sdStatus && sdActive) ? "Logging:\n\n" + String(xBeeSendLog) : (sdActive) ? "NAFM\nClear SD"
                                                                                       : "SD\nFailed";
   Screen.update(_print);
-  timer = millis();
   wait(DELAY_SETUP);
   logData("XBee Sent,2,3,4,5,6,7,8", xBeeSendLog);
 
@@ -603,22 +599,18 @@ void listenXBee()
       return;                       // No data was received
     Serial.println(xbeeSerialData); // Spit out recieved message over Serial
 
-    if (xbeeSerialData.indexOf(IDterminator) != -1)
-    {                                               // If no IDterminator is found indexOf will return -1, so if it doesn't equal -1 continue
-      split = xbeeSerialData.indexOf(IDterminator); // IDTerminator = ? separates id from command
+    split = xbeeSerialData.indexOf(IDterminator);
+    if (split != -1)
+    { // If no IDterminator is found indexOf will return -1, so if it doesn't equal -1 continue
       recievedID = (xbeeSerialData.substring(0, split));
       if (recievedID != xbeeID && !isRelay)
         break;                                                                             // If we are recieving and the message is not for us break
       xbeeSerialData = (xbeeSerialData.substring(split + 1, xbeeSerialData.length() - 1)); // break up message, the remaining part is the serial data
     }
 
-    // LED3.off();
-
     if ((xbeeSerialData.substring(0, 4)).equals("DATA"))
     { // Get full data string
-      // xbeeSerialData = xbeeSerialData.substring(4);
       LED5.on();
-      // xBeeSS.print(xbeeID + IDterminator + data + stringTerminator + String(inboxTerminator));
       updateXBee(xbeeID + IDterminator + data + stringTerminator + String(inboxTerminator));
       xbeeMessage = "DATA STRING TRANSMITTED";
       LED5.off();
